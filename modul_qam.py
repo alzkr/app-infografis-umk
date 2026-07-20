@@ -7,7 +7,7 @@ from fpdf import FPDF
 
 # --- INISIALISASI DATABASE (MENGGUNAKAN ST.CONNECTION & SQLALCHEMY) ---
 # Pastikan URL disimpan di .streamlit/secrets.toml sebagai SUPABASE_DB_URL
-conn = st.connection("supabase", type="sql", url=st.secrets["connections"]["supabase"]["url"])
+conn = st.connection("supabase", type="sql", url=st.secrets["SUPABASE_DB_URL"])
 
 def init_db():
     # PostgreSQL menggunakan sintaks SERIAL untuk Auto Increment

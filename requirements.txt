@@ -1,0 +1,6 @@
+streamlit
+pandas
+fpdf
+Pillow
+SQLAlchemy
+psycopg2-binary

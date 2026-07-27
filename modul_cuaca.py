@@ -6,7 +6,7 @@ from datetime import datetime
 from sqlalchemy import create_engine, text
 
 # ==========================================
-# INISIALISASI DATABASE INFOGRAFIS (SUPABASE)
+# 1. INISIALISASI DATABASE (SUPABASE)
 # ==========================================
 @st.cache_resource
 def get_db_engine():
@@ -36,7 +36,7 @@ def init_db_cuaca():
     return engine
 
 # ==========================================
-# FUNGSI GENERATE GAMBAR
+# 2. FUNGSI GENERATE INFOGRAFIS (GAMBAR)
 # ==========================================
 def generate_infografis(data):
     # Format cuaca dan waktu agar aman untuk nama file (huruf kecil & garis bawah)
@@ -46,6 +46,7 @@ def generate_infografis(data):
     nama_file_bg = f"template_{cuaca_format}_{waktu_format}.png"
     
     try:
+        # --- LOAD BACKGROUND MOCKUP ---
         try:
             bg = Image.open(nama_file_bg).convert("RGBA")
         except FileNotFoundError:
@@ -54,16 +55,16 @@ def generate_infografis(data):
             
         draw = ImageDraw.Draw(bg)
         
-        # Load Font
+        # --- LOAD CUSTOM FONTS ---
         try:
-            # --- FONT 1: KHUSUS NILAI ANGKA PADA DATA ---
+            # FONT 1: KHUSUS NILAI ANGKA PADA DATA
             font_angka_60 = ImageFont.truetype("spartan.ttf", 175)
             font_angka_40 = ImageFont.truetype("spartan.ttf", 120)
             
-            # --- FONT 2: KHUSUS TEKS & WAKTU ---
+            # FONT 2: KHUSUS TEKS & WAKTU
             font_teks_bln_thn = ImageFont.truetype("rubik.ttf", 27)
             font_teks_jam = ImageFont.truetype("rubik.ttf", 35)
-            font_teks_tanggal = ImageFont.truetype("rubik.ttf", 90)
+            font_teks_tanggal = ImageFont.truetype("rubik.ttf", 88)
             font_teks_angin = ImageFont.truetype("rubik.ttf", 47)
             font_teks_cuaca = ImageFont.truetype("rubik.ttf", 87)
             
@@ -77,8 +78,8 @@ def generate_infografis(data):
             font_teks_angin = ImageFont.load_default()
             font_teks_cuaca = ImageFont.load_default()
 
-        # 3. MENCETAK TEKS SESUAI UKURAN
-        # --- KELOMPOK TEKS & WAKTU (FONT 2) ---
+
+        # --- DRAWING TEXT & WAKTU (HEADER) ---
         draw.text((1150, 300), data['bulan_tahun'], font=font_teks_bln_thn, fill="#FFFFFF")
         
         draw.text(
@@ -90,13 +91,14 @@ def generate_infografis(data):
             stroke_fill="#000000"   
         )
         
-        # --- MEMISAHKAN JAM DAN ZONA WAKTU ---
+        # Memisahkan jam dan zona waktu
         jam_pecah = data['jam_lengkap'].split(" ") 
         angka_jam = jam_pecah[0]  
         zona_waktu = jam_pecah[1] 
         
         draw.text((1220, 365), angka_jam, font=font_teks_jam, fill="#000000")
         draw.text((1220, 410), zona_waktu, font=font_teks_jam, fill="#000000")
+        
         
         # --- LOGIKA PERATAAN TENGAH DINAMIS UNTUK SUHU & CUACA ---
         titik_tengah_x = 740 
@@ -121,75 +123,95 @@ def generate_infografis(data):
             stroke_fill="#ffffff"   
         )
         
-        titik_tengah_angin_x = 1117 
-        
-        # 1. Baris Pertama: Arah Angin
-        teks_arah = f"{data['arah_teks']}"
-        lebar_arah = draw.textlength(teks_arah, font=font_teks_angin)
-        pos_x_arah = int(titik_tengah_angin_x - (lebar_arah / 2))
-        draw.text((pos_x_arah, 1776), teks_arah, font=font_teks_angin, fill="#FFFF00")
-        
-        # 2. Baris Kedua: Kecepatan Angin 
-        try:
-            nilai_knot = float(data['kecepatan'] if data['kecepatan'] else 0)
-        except ValueError:
-            nilai_knot = 0
-            
-        if nilai_knot == 0 or teks_arah.upper() == "CALM":
-            teks_kecepatan = "Calm" 
-        else:
-            nilai_kmj = round(nilai_knot * 1.852)
-            teks_kecepatan = f"{nilai_kmj} km/jam"
-            
-        lebar_kecepatan = draw.textlength(teks_kecepatan, font=font_teks_angin)
-        pos_x_kecepatan = int(titik_tengah_angin_x - (lebar_kecepatan / 2))
-        draw.text((pos_x_kecepatan, 1830), teks_kecepatan, font=font_teks_angin, fill="#FFFF00")
 
-        # --- KELOMPOK NILAI ANGKA DATA (FONT 1) ---
+        # --- DRAWING NILAI ANGKA (KIRI & KANAN) ---
+        # Kiri (Rata Kiri Default)
         draw.text((149, 1387), f"{data['titik_embun']}°", font=font_angka_60, fill="#FFFFFF")
         draw.text((128, 1745), str(data['tekanan']), font=font_angka_40, fill="#FFFFFF")
 
-        # --- LOGIKA PERATAAN KANAN UNTUK KELEMBAPAN & JARAK PANDANG ---
+        # Kanan (Logika Rata Kanan Khusus)
         batas_kanan_kelembapan = 710 
         batas_kanan_jarak = 693
         
-        # 1. Kelembapan
+        # Kelembapan
         teks_kelembapan = str(data['kelembapan'])
         lebar_kelembapan = draw.textlength(teks_kelembapan, font=font_angka_60)
         pos_x_kelembapan = int(batas_kanan_kelembapan - lebar_kelembapan)
         draw.text((pos_x_kelembapan, 1387), teks_kelembapan, font=font_angka_60, fill="#FFFFFF")
         
-        # 2. Jarak Pandang
+        # Jarak Pandang
         teks_jarak = str(data['jarak_pandang'])
         lebar_jarak = draw.textlength(teks_jarak, font=font_angka_60)
         pos_x_jarak = int(batas_kanan_jarak - lebar_jarak)
         draw.text((pos_x_jarak, 1732), teks_jarak, font=font_angka_60, fill="#FFFFFF")
         
-        # 4. Proses Putaran Jarum Kompas
-        kecepatan_cek = str(data['kecepatan']).strip().lower()
+
+        # --- LOGIKA ANGIN & JARUM KOMPAS (PEMBARUAN) ---
+        titik_tengah_angin_x = 1117 
+        arah_teks = str(data['arah_teks']).strip()
         
-        if kecepatan_cek not in ["", "0", "calm", "0.0"]:
+        try:
+            nilai_knot = float(data['kecepatan'] if data['kecepatan'] else 0)
+        except ValueError:
+            nilai_knot = 0
+            
+        # Pengecekan Kondisi Angin
+        kondisi_calm = (nilai_knot == 0) or (arah_teks.upper() == "CALM")
+        
+        if kondisi_calm:
+            # === JIKA CALM ===
+            # Hanya cetak 1 baris teks "Calm" tepat di tengah area (Y: 1803)
+            teks_angin = "Calm"
+            lebar_angin = draw.textlength(teks_angin, font=font_teks_angin)
+            pos_x_angin = int(titik_tengah_angin_x - (lebar_angin / 2))
+            
+            draw.text((pos_x_angin, 1803), teks_angin, font=font_teks_angin, fill="#FFFF00")
+            
+            # Note: Kita TIDAK mengeksekusi blok kode tempel jarum kompas di sini.
+            
+        else:
+            # === JIKA TIDAK CALM (BERANGIN) ===
+            # 1. Baris Atas: Arah Angin Teks (Y: 1776)
+            teks_tampil_arah = f"dari {arah_teks}"
+            lebar_arah = draw.textlength(teks_tampil_arah, font=font_teks_angin)
+            pos_x_arah = int(titik_tengah_angin_x - (lebar_arah / 2))
+            draw.text((pos_x_arah, 1776), teks_tampil_arah, font=font_teks_angin, fill="#FFFF00")
+            
+            # 2. Baris Bawah: Kecepatan Konversi km/jam (Y: 1830)
+            nilai_kmj = round(nilai_knot * 1.852)
+            teks_kecepatan = f"{nilai_kmj} km/jam"
+            
+            lebar_kecepatan = draw.textlength(teks_kecepatan, font=font_teks_angin)
+            pos_x_kecepatan = int(titik_tengah_angin_x - (lebar_kecepatan / 2))
+            draw.text((pos_x_kecepatan, 1830), teks_kecepatan, font=font_teks_angin, fill="#FFFF00")
+
+            # 3. Proses Putaran & Penempelan Jarum Kompas
             try:
                 jarum = Image.open("jarum_kompas.png").convert("RGBA")
                 
+                # Resize Jarum
                 lebar_baru = 400
                 tinggi_baru = 400
                 jarum = jarum.resize((lebar_baru, tinggi_baru), Image.Resampling.LANCZOS)
                 
+                # Memutar Jarum (Counter-Clockwise untuk Pillow)
                 jarum_diputar = jarum.rotate(-float(data['arah_derajat']), resample=Image.BICUBIC, expand=True) 
                 
+                # Hitung posisi paste agar jarum tepat di tengah kompas (Y: 1500)
                 w_jarum, h_jarum = jarum_diputar.size
-                titik_pusat_x = 1117  
                 titik_pusat_y = 1500  
                 
-                pos_x = int(titik_pusat_x - (w_jarum / 2))
-                pos_y = int(titik_pusat_y - (h_jarum / 2))
+                pos_x_jarum = int(titik_tengah_angin_x - (w_jarum / 2))
+                pos_y_jarum = int(titik_pusat_y - (h_jarum / 2))
                 
-                bg.paste(jarum_diputar, (pos_x, pos_y), mask=jarum_diputar)
+                # Paste jarum ke background
+                bg.paste(jarum_diputar, (pos_x_jarum, pos_y_jarum), mask=jarum_diputar)
+                
             except FileNotFoundError:
                 pass
 
-        # Konversi ke Bytes
+
+        # --- KONVERSI HASIL KE BYTES ---
         img_byte_arr = io.BytesIO()
         bg.save(img_byte_arr, format='PNG')
         return img_byte_arr.getvalue()
@@ -199,7 +221,7 @@ def generate_infografis(data):
         return None
 
 # ==========================================
-# FUNGSI UTAMA UI DENGAN TAB DB
+# 3. FUNGSI UTAMA ANTARMUKA (UI)
 # ==========================================
 def tampilkan_ui_cuaca():
     engine = init_db_cuaca()
@@ -212,6 +234,7 @@ def tampilkan_ui_cuaca():
     # ------------------------------------------
     tab_input, tab_db = st.tabs(["📝 Buat & Simpan", "🗄️ Riwayat Database"])
     
+    # === TAB 1: FORM INPUT ===
     with tab_input:
         now = datetime.now()
         
@@ -223,7 +246,7 @@ def tampilkan_ui_cuaca():
             "Berubah-ubah (Variabel)": 0
         }
         
-        # --- LOGIKA KONVERSI DERAJAT QAM KE ARAH TEKS ---
+        # Logika Konversi Derajat QAM ke Arah Teks Default
         qam_arah = st.session_state.get("qam_arah_angin", "").strip()
         default_idx_arah = 0 
         
@@ -248,7 +271,7 @@ def tampilkan_ui_cuaca():
                     
         pilihan_jam_ops = [f"{str(h).zfill(2)}:00" for h in range(7, 18)]
         
-        # --- MENGAMBIL DATA DARI QAM (JIKA ADA) ---
+        # Mengambil Data dari Session QAM (Jika Ada)
         qnh_qam = st.session_state.get("qam_qnh", "")
         if qnh_qam:
             try:
@@ -256,6 +279,7 @@ def tampilkan_ui_cuaca():
             except ValueError:
                 pass
                 
+        # --- FORM BUILDER ---
         with st.form("form_infografis"):
             st.markdown("**Data Waktu & Cuaca**")
             
@@ -305,6 +329,7 @@ def tampilkan_ui_cuaca():
             
             submit_btn = st.form_submit_button("🎨 Buat Gambar & Simpan ke DB", type="primary", use_container_width=True)
 
+        # --- AKSI KETIKA TOMBOL SUBMIT DITEKAN ---
         if submit_btn:
             jam_angka = int(jam_dipilih.split(":")[0])
             if 7 <= jam_angka < 11:
@@ -335,6 +360,7 @@ def tampilkan_ui_cuaca():
                 "kecepatan": kecepatan
             }
             
+            # Panggil fungsi generate
             gambar_hasil = generate_infografis(data_cuaca)
             
             if gambar_hasil:
@@ -375,7 +401,7 @@ def tampilkan_ui_cuaca():
                     
                     conn.commit()
 
-                # Tampilan Sukses
+                # Tampilan Sukses di Antarmuka
                 st.success(f"✅ Gambar siap! Silakan salin ke WhatsApp.")
                 st.info("💡 **TIPS COPY KE WA:** Klik Kanan pada gambar di bawah, lalu pilih **'Copy image'** (Salin Gambar), kemudian buka WhatsApp dan tekan **Ctrl+V (Paste)**.")
                 
